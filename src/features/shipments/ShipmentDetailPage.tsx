@@ -200,6 +200,7 @@ export function ShipmentDetailPage() {
             <InfoGrid
               fields={[
                 { icon: 'shipments', label: t('shipments.cargoType'), value: shipment.cargo_type },
+                { icon: 'truckTypes', label: t('shipments.vehicleType'), value: shipment.truck_type_label || shipment.truck_type },
                 { icon: 'quantity', label: t('common.quantity'), value: quantityValue(shipment.quantity, shipment.quantity_unit) },
                 { icon: 'quantity', label: t('common.weight'), value: shipment.weight_tons == null || shipment.weight_tons === '' ? null : formatNumber(shipment.weight_tons) },
                 { icon: 'quantity', label: t('common.volume'), value: shipment.volume_cbm == null || shipment.volume_cbm === '' ? null : formatNumber(shipment.volume_cbm) },

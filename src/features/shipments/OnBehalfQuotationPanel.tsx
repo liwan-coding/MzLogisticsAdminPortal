@@ -10,7 +10,7 @@ import {
   withdrawQuotation,
 } from '@/core/api/services.ts'
 import type { Organization, Shipment } from '@/core/api/types.ts'
-import { QuoteExecutionFields } from '@/features/quotations/QuoteExecutionFields.tsx'
+import { QuoteExecutionFields, requestedTruckType } from '@/features/quotations/QuoteExecutionFields.tsx'
 import { earliestTransportStart } from '@/features/quotations/transportStart.ts'
 import { billableTripCount, quotationTotal } from '@/features/quotations/quotationPrice.ts'
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog.tsx'
@@ -172,6 +172,11 @@ export function OnBehalfQuotationPanel({ shipment }: OnBehalfQuotationPanelProps
     enabled: providerId !== '',
   })
   const activeTruckTypes = (truckTypes.data ?? []).filter((row) => row.is_active)
+  const requestedType = requestedTruckType(shipment, truckTypes.data ?? [], truckTypes.isSuccess)
+  useEffect(() => {
+    if (!requestedType) return
+    setForm((current) => (current.truck_type === '' ? { ...current, truck_type: requestedType } : current))
+  }, [requestedType, providerId])
   const existing = (shipment.quotations ?? []).find(
     (row) => providerId !== '' && String(row.provider?.id) === providerId && row.status !== 'withdrawn',
   )

@@ -37,6 +37,15 @@ interface QuoteExecutionFieldsProps {
 
 const blankLocks = { capacity: false, trucks: false, trips: false, qty: false, duration: false }
 
+export function requestedTruckType(shipment: Shipment, types: CatalogTruckType[], ready: boolean) {
+  if (!ready) return ''
+  const code = shipment.truck_type?.trim() ?? ''
+  if (!code) return ''
+  const known = types.find((row) => row.code === code)
+  if (known && !known.is_active) return ''
+  return code
+}
+
 function asNumber(value?: string | number | null) {
   if (value == null || value === '') return 0
   const amount = typeof value === 'number' ? value : Number(value)
@@ -327,6 +336,9 @@ export function QuoteExecutionFields({
           required
         >
           <option value="">{t('shipments.chooseTruckType')}</option>
+          {shipment.truck_type && !truckTypes.some((row) => row.code === shipment.truck_type) ? (
+            <option value={shipment.truck_type}>{shipment.truck_type_label || shipment.truck_type}</option>
+          ) : null}
           {truckTypes.map((row) => (
             <option key={row.id} value={row.code}>
               {row.name_ar && row.name_ar !== row.name ? `${row.name} / ${row.name_ar}` : row.name}

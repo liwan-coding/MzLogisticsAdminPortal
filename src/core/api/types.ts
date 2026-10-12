@@ -121,6 +121,8 @@ export interface Shipment {
   id: number
   reference: string
   cargo_type?: string | null
+  truck_type?: string | null
+  truck_type_label?: string | null
   cargo_description?: string | null
   weight_tons?: string | number | null
   volume_cbm?: string | number | null
@@ -612,6 +614,7 @@ export interface PlaceLocation {
 export interface CreateShipmentInput {
   customer_organization_id: number
   cargo_type: string
+  truck_type: string
   cargo_description?: string
   weight_tons: number
   volume_cbm?: number

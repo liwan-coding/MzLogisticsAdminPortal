@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { createShipment, fetchCustomers, fetchOrganization, fetchShipment, updateShipment } from '@/core/api/services.ts'
 import type { Organization, PlaceLocation, Shipment } from '@/core/api/types.ts'
+import { useCatalog } from '@/shared/hooks/useCatalog.ts'
 import { LocationPicker } from '@/features/shipments/LocationPicker.tsx'
 import {
   addDays,
@@ -21,6 +22,7 @@ import { ErrorState } from '@/shared/components/ErrorState.tsx'
 import { isCustomerOrganization, organizationName } from '@/shared/utils/format.ts'
 
 const quantityUnits = ['tons', 'pallets', 'units'] as const
+const otherVehicleType = '__other__'
 
 function todayInput(): string {
   const now = new Date()
@@ -218,8 +220,15 @@ export function ShipmentFormPage() {
     queryFn: () => fetchShipment(editId ?? ''),
     enabled: editing,
   })
+  const catalog = useCatalog()
+  const catalogCodes = useMemo(
+    () => new Set((catalog.data?.truck_types ?? []).map((row) => row.code)),
+    [catalog.data?.truck_types],
+  )
   const [form, setForm] = useState({
     cargo_type: '',
+    truck_type: '',
+    custom_truck_type: '',
     cargo_description: '',
     weight_tons: '',
     volume_cbm: '',
@@ -256,6 +265,8 @@ export function ShipmentFormPage() {
     const requiredDate = row.required_date?.slice(0, 10) || todayInput()
     setForm({
       cargo_type: row.cargo_type ?? '',
+      truck_type: row.truck_type ?? '',
+      custom_truck_type: '',
       cargo_description: row.cargo_description ?? '',
       weight_tons: row.weight_tons == null ? '' : String(row.weight_tons),
       volume_cbm: row.volume_cbm == null ? '' : String(row.volume_cbm),
@@ -295,13 +306,31 @@ export function ShipmentFormPage() {
     setDueDate('')
   }, [editing, customerId, form.required_date, selectedCustomer.data, selectedCustomer.isSuccess])
 
+  useEffect(() => {
+    if (!catalog.isSuccess) return
+    setForm((current) => {
+      if (!current.truck_type || current.truck_type === otherVehicleType) return current
+      if (catalogCodes.has(current.truck_type)) return current
+      return {
+        ...current,
+        truck_type: otherVehicleType,
+        custom_truck_type: current.custom_truck_type || current.truck_type,
+      }
+    })
+  }, [catalog.isSuccess, catalogCodes])
+
   const save = useMutation({
     mutationFn: (input: { pickup: PlaceLocation; delivery: PlaceLocation; dueDays: number }) => {
       const weight = Number(form.weight_tons)
       const volume = form.volume_cbm.trim() === '' ? undefined : Number(form.volume_cbm)
       const quantity = form.quantity_unit === 'tons' || form.quantity.trim() === '' ? undefined : Number(form.quantity)
+      const activeVehicleTypes = (catalog.data?.truck_types ?? []).filter((row) => row.is_active)
+      const writeInOnly = catalog.isError || (catalog.isSuccess && activeVehicleTypes.length === 0)
+      const truckType =
+        writeInOnly || form.truck_type === otherVehicleType ? form.custom_truck_type.trim() : form.truck_type
       const payload = {
         cargo_type: form.cargo_type.trim(),
+        truck_type: truckType,
         cargo_description: form.cargo_description.trim() || undefined,
         weight_tons: weight,
         volume_cbm: volume,
@@ -350,6 +379,13 @@ export function ShipmentFormPage() {
       setError(t('location.deliveryMapRequired'))
       return
     }
+    const activeVehicleTypes = (catalog.data?.truck_types ?? []).filter((row) => row.is_active)
+    const writeInOnly = catalog.isError || (catalog.isSuccess && activeVehicleTypes.length === 0)
+    const writingCustom = writeInOnly || form.truck_type === otherVehicleType
+    if (writingCustom ? form.custom_truck_type.trim() === '' : form.truck_type === '') {
+      setError(t(writingCustom ? 'shipments.customVehicleTypeRequired' : 'shipments.chooseVehicleType'))
+      return
+    }
     let dueDays = 0
     if (dueMode === 'date') {
       if (!dueDate) {
@@ -372,6 +408,12 @@ export function ShipmentFormPage() {
   if (editing && existing.isLoading) {
     return <LoadingState />
   }
+
+  const listedVehicleTypes = (catalog.data?.truck_types ?? []).filter(
+    (row) => row.is_active || (form.truck_type !== '' && form.truck_type !== otherVehicleType && row.code === form.truck_type),
+  )
+  const hasListedTypes = catalog.isSuccess && listedVehicleTypes.length > 0
+  const writingCustom = !catalog.isLoading && (!hasListedTypes || form.truck_type === otherVehicleType)
 
   if (editing && (existing.isError || !existing.data)) {
     return <ErrorState onRetry={() => void existing.refetch()} />
@@ -424,6 +466,49 @@ export function ShipmentFormPage() {
                 required
               />
             </FormField>
+            {catalog.isLoading || hasListedTypes ? (
+              <FormField label={t('shipments.vehicleType')} htmlFor="shipment-vehicle" required>
+                <select
+                  id="shipment-vehicle"
+                  className="mz-select"
+                  value={catalog.isLoading ? '' : form.truck_type}
+                  onChange={(event) => setForm((current) => ({ ...current, truck_type: event.target.value }))}
+                  required={hasListedTypes}
+                  disabled={catalog.isLoading}
+                >
+                  <option value="">{catalog.isLoading ? t('common.loading') : t('shipments.chooseVehicleType')}</option>
+                  {listedVehicleTypes.map((row) => (
+                    <option key={row.id} value={row.code}>
+                      {row.name_ar && row.name_ar !== row.name ? `${row.name} / ${row.name_ar}` : row.name}
+                    </option>
+                  ))}
+                  {hasListedTypes ? <option value={otherVehicleType}>{t('shipments.otherVehicleType')}</option> : null}
+                </select>
+              </FormField>
+            ) : null}
+            {writingCustom ? (
+              <FormField
+                label={hasListedTypes ? t('shipments.customVehicleType') : t('shipments.vehicleType')}
+                htmlFor="shipment-vehicle-custom"
+                required
+                hint={t('shipments.customVehicleTypeHint')}
+                error={catalog.isError ? t('shipments.vehicleTypesFailed') : undefined}
+              >
+                <input
+                  id="shipment-vehicle-custom"
+                  className="mz-input"
+                  value={form.custom_truck_type}
+                  maxLength={120}
+                  onChange={(event) => setForm((current) => ({ ...current, custom_truck_type: event.target.value }))}
+                  required
+                />
+                {catalog.isError ? (
+                  <button type="button" className="mz-btn mz-btn--ghost" onClick={() => void catalog.refetch()}>
+                    {t('common.retry')}
+                  </button>
+                ) : null}
+              </FormField>
+            ) : null}
             <FormField label={t('common.weight')} htmlFor="shipment-weight" required>
               <input
                 id="shipment-weight"

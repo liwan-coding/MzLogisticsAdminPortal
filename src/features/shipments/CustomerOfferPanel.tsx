@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { fetchFleetForPlan, fetchTruckTypes, type PlatformOfferInput } from '@/core/api/services.ts'
 import type { PlatformOffer, Quotation, Shipment } from '@/core/api/types.ts'
-import { QuoteExecutionFields } from '@/features/quotations/QuoteExecutionFields.tsx'
+import { QuoteExecutionFields, requestedTruckType } from '@/features/quotations/QuoteExecutionFields.tsx'
 import { earliestTransportStart } from '@/features/quotations/transportStart.ts'
 import { billableTripCount, quotationTotal } from '@/features/quotations/quotationPrice.ts'
 import { OnBehalfQuotationPanel } from '@/features/shipments/OnBehalfQuotationPanel.tsx'
@@ -175,6 +175,11 @@ export function CustomerOfferPanel({
     ownedForm.transport_start_date !== '' &&
     planValid
   const activeTruckTypes = (truckTypes.data ?? []).filter((row) => row.is_active)
+  const requestedType = requestedTruckType(shipment, truckTypes.data ?? [], truckTypes.isSuccess)
+  useEffect(() => {
+    if (!requestedType) return
+    setOwnedForm((current) => (current.truck_type === '' ? { ...current, truck_type: requestedType } : current))
+  }, [requestedType, shipment.id])
   const unitLabel = shipment.quantity_unit
     ? t(`common.quantityUnits.${shipment.quantity_unit}`, { defaultValue: shipment.quantity_unit })
     : null
