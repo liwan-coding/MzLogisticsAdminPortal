@@ -29,6 +29,7 @@ import { SectionTitle } from '@/shared/components/SectionTitle.tsx'
 import { useListQuery } from '@/shared/hooks/useListQuery.ts'
 import { displayValue, formatDate, organizationName } from '@/shared/utils/format.ts'
 import { ExcelImportDialog } from '@/shared/components/ExcelImportDialog.tsx'
+import { DEFAULT_TRIP_LOAD_LIMIT_TONS } from '@/features/fleet/tripLoad.ts'
 import type { SpreadsheetImportError } from '@/core/api/services.ts'
 import { DownloadReportButton } from '@/shared/reports/DownloadReportButton.tsx'
 import { createListReport, listReportFilters, reportStatus } from '@/shared/reports/buildReport.ts'
@@ -40,6 +41,7 @@ const emptyTruck = {
   plate_number: '',
   type: '',
   capacity_tons: '',
+  trip_load_limit_tons: String(DEFAULT_TRIP_LOAD_LIMIT_TONS),
   volume_cbm: '',
   year: '',
   make: '',
@@ -71,6 +73,7 @@ export function FleetPage() {
   const [editingTruck, setEditingTruck] = useState<Truck | null>(null)
   const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null)
   const [truckForm, setTruckForm] = useState(emptyTruck)
+  const [limitTouched, setLimitTouched] = useState(false)
   const [equipmentForm, setEquipmentForm] = useState(emptyEquipment)
   const [importTarget, setImportTarget] = useState<'trucks' | 'equipment' | null>(null)
 
@@ -126,6 +129,7 @@ export function FleetPage() {
 
   function openTruck(row?: Truck) {
     setEditingTruck(row ?? null)
+    setLimitTouched(Boolean(row))
     setError('')
     setTruckForm(
       row
@@ -133,6 +137,7 @@ export function FleetPage() {
             plate_number: row.plate_number,
             type: row.type ?? '',
             capacity_tons: row.capacity_tons == null ? '' : String(row.capacity_tons),
+            trip_load_limit_tons: row.trip_load_limit_tons == null ? String(DEFAULT_TRIP_LOAD_LIMIT_TONS) : String(row.trip_load_limit_tons),
             volume_cbm: row.volume_cbm == null ? '' : String(row.volume_cbm),
             year: row.year == null ? '' : String(row.year),
             make: row.make ?? '',
@@ -168,6 +173,7 @@ export function FleetPage() {
       plate_number: truckForm.plate_number.trim(),
       type: truckForm.type,
       capacity_tons: Number(truckForm.capacity_tons),
+      trip_load_limit_tons: Number(truckForm.trip_load_limit_tons),
       status: truckForm.status,
     }
     if (truckForm.volume_cbm.trim()) payload.volume_cbm = Number(truckForm.volume_cbm)
@@ -193,6 +199,7 @@ export function FleetPage() {
     { id: 'plate', header: t('fleet.plate'), cell: (row) => row.plate_number },
     { id: 'type', header: t('common.type'), cell: (row) => displayValue(row.type_label ?? row.type) },
     { id: 'capacity', header: t('fleet.capacity'), cell: (row) => displayValue(row.capacity_tons) },
+    { id: 'trip-load', header: t('fleet.tripLoadLimit'), cell: (row) => displayValue(row.trip_load_limit_tons) },
     { id: 'volume', header: t('fleet.volume'), cell: (row) => displayValue(row.volume_cbm) },
     { id: 'make', header: t('fleet.make'), cell: (row) => `${displayValue(row.make)} ${displayValue(row.model)}` },
     ...(owner === 'provider'
@@ -264,6 +271,7 @@ export function FleetPage() {
                     t('fleet.plate'),
                     t('common.type'),
                     t('fleet.capacity'),
+                    t('fleet.tripLoadLimit'),
                     t('fleet.volume'),
                     t('fleet.make'),
                     t('common.provider'),
@@ -275,6 +283,7 @@ export function FleetPage() {
                     row.plate_number,
                     displayValue(row.type_label ?? row.type),
                     displayValue(row.capacity_tons),
+                    displayValue(row.trip_load_limit_tons),
                     displayValue(row.volume_cbm),
                     `${displayValue(row.make)} ${displayValue(row.model)}`,
                     organizationName(row.organization),
@@ -382,7 +391,37 @@ export function FleetPage() {
             </select>
           </FormField>
           <FormField label={t('fleet.capacity')} htmlFor="truck-capacity" required>
-            <input id="truck-capacity" className="mz-input" inputMode="decimal" value={truckForm.capacity_tons} required onChange={(event) => setTruckForm((current) => ({ ...current, capacity_tons: event.target.value }))} />
+            <input
+              id="truck-capacity"
+              className="mz-input"
+              inputMode="decimal"
+              value={truckForm.capacity_tons}
+              required
+              onChange={(event) => {
+                const raw = event.target.value
+                setTruckForm((current) => {
+                  const capacity = Number(raw)
+                  const next = { ...current, capacity_tons: raw }
+                  if (!limitTouched && Number.isFinite(capacity) && capacity > 0) {
+                    next.trip_load_limit_tons = String(Math.min(DEFAULT_TRIP_LOAD_LIMIT_TONS, capacity))
+                  }
+                  return next
+                })
+              }}
+            />
+          </FormField>
+          <FormField label={t('fleet.tripLoadLimit')} htmlFor="truck-trip-load" required hint={t('fleet.tripLoadLimitHint')}>
+            <input
+              id="truck-trip-load"
+              className="mz-input"
+              inputMode="decimal"
+              value={truckForm.trip_load_limit_tons}
+              required
+              onChange={(event) => {
+                setLimitTouched(true)
+                setTruckForm((current) => ({ ...current, trip_load_limit_tons: event.target.value }))
+              }}
+            />
           </FormField>
           <FormField label={t('fleet.volume')} htmlFor="truck-volume">
             <input id="truck-volume" className="mz-input" inputMode="decimal" value={truckForm.volume_cbm} onChange={(event) => setTruckForm((current) => ({ ...current, volume_cbm: event.target.value }))} />
@@ -491,6 +530,9 @@ function localizeFleetImportError(
     }
     if (error.field === 'capacity_tons') {
       return t('fleet.importCapacityInvalid')
+    }
+    if (error.field === 'trip_load_limit_tons') {
+      return t('fleet.importTripLoadInvalid')
     }
   }
   if (target === 'equipment') {

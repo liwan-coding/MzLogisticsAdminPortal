@@ -503,6 +503,7 @@ export type TruckInput = {
   plate_number: string
   type: string
   capacity_tons: number
+  trip_load_limit_tons: number
   volume_cbm?: number
   year?: number
   make?: string

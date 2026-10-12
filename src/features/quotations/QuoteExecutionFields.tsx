@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { CatalogTruckType, Shipment, Truck } from '@/core/api/types.ts'
+import { tripLoadTons } from '@/features/fleet/tripLoad.ts'
 import { FormField } from '@/shared/components/FormField.tsx'
 import {
   assessTransportPlan,
@@ -56,7 +57,7 @@ function fleetCapacities(trucks: Truck[], type: string) {
   if (!type) return []
   return trucks
     .filter((truck) => truck.type === type && truck.status !== 'maintenance' && truck.status !== 'inactive')
-    .map((truck) => asNumber(truck.capacity_tons))
+    .map((truck) => tripLoadTons(truck.capacity_tons, truck.trip_load_limit_tons))
     .filter((capacity) => capacity > 0)
 }
 

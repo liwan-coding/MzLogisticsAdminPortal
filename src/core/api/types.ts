@@ -301,6 +301,7 @@ export interface Truck {
   type?: string | null
   type_label?: string | null
   capacity_tons?: string | number | null
+  trip_load_limit_tons?: string | number | null
   volume_cbm?: string | number | null
   cargo_length_m?: string | number | null
   cargo_width_m?: string | number | null
