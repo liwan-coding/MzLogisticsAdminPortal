@@ -99,9 +99,11 @@ export function QuotationDetailPage() {
   const customerName = organizationName(shipment?.customer)
   const currency = quotation.currency ?? undefined
   const totalAmount = moneyAmount(quotation.total_price)
-  const additionalAmount = moneyAmount(quotation.additional_costs)
+  const transportAmount = moneyAmount(quotation.transport_price)
   const baseAmount =
-    totalAmount != null && additionalAmount != null && additionalAmount > 0 ? totalAmount - additionalAmount : null
+    transportAmount != null && totalAmount != null && Math.abs(transportAmount - totalAmount) > 0.0005
+      ? transportAmount
+      : null
   const validityExpired = quotation.status === 'submitted' && isPastDate(quotation.valid_until)
   const canWithdraw =
     quotation.submitted_on_behalf === true &&
@@ -187,9 +189,11 @@ export function QuotationDetailPage() {
             <SectionTitle icon="payments" title={t('quotations.offerSection')} />
             <InfoGrid
               fields={[
-                ...(quotation.price_per_trip != null && quotation.price_per_trip !== ''
-                  ? [{ icon: 'trips' as const, label: t('quotations.pricePerTrip'), value: formatMoney(quotation.price_per_trip, currency) }]
-                  : []),
+                ...(quotation.price_per_ton != null && quotation.price_per_ton !== ''
+                  ? [{ icon: 'fleet' as const, label: t('quotations.pricePerTon'), value: formatMoney(quotation.price_per_ton, currency) }]
+                  : quotation.price_per_trip != null && quotation.price_per_trip !== ''
+                    ? [{ icon: 'trips' as const, label: t('quotations.pricePerTrip'), value: formatMoney(quotation.price_per_trip, currency) }]
+                    : []),
                 { icon: 'payments', label: t('quotations.price'), value: formatMoney(quotation.total_price, currency) },
                 ...(baseAmount != null
                   ? [{ icon: 'commission' as const, label: t('quotations.basePrice'), value: formatMoney(baseAmount, currency) }]

@@ -183,7 +183,10 @@ export interface Quotation {
   reference: string
   shipment_request_id: number
   total_price?: string | number | null
+  transport_price?: string | number | null
   price_per_trip?: string | number | null
+  price_per_ton?: string | number | null
+  pricing_basis?: 'trip' | 'ton' | null
   currency?: string | null
   truck_count?: number | null
   truck_type?: string | null

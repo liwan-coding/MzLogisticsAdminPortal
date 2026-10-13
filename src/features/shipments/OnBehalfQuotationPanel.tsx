@@ -11,18 +11,26 @@ import {
 } from '@/core/api/services.ts'
 import type { Organization, Shipment } from '@/core/api/types.ts'
 import { QuoteExecutionFields, requestedTruckType } from '@/features/quotations/QuoteExecutionFields.tsx'
+import { QuotePayableHint, QuotePriceFields } from '@/features/quotations/QuotePriceFields.tsx'
 import { earliestTransportStart } from '@/features/quotations/transportStart.ts'
-import { billableTripCount, quotationTotal } from '@/features/quotations/quotationPrice.ts'
+import {
+  billableTripCount,
+  quotationTotal,
+  shipmentWeightTons,
+  tonQuotationTotal,
+  type PricingBasis,
+} from '@/features/quotations/quotationPrice.ts'
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog.tsx'
 import { FormField } from '@/shared/components/FormField.tsx'
-import { formatMoney, organizationName } from '@/shared/utils/format.ts'
+import { organizationName } from '@/shared/utils/format.ts'
 
 interface OnBehalfQuotationPanelProps {
   shipment: Shipment
 }
 
 const emptyForm = {
-  price_per_trip: '',
+  pricing_basis: 'trip' as PricingBasis,
+  unit_price: '',
   truck_count: '1',
   truck_type: '',
   truck_capacity_tons: '',
@@ -182,16 +190,23 @@ export function OnBehalfQuotationPanel({ shipment }: OnBehalfQuotationPanelProps
   )
   const canReplace = existing?.submitted_on_behalf === true && existing.status === 'submitted'
   const blocked = Boolean(existing)
-  const price = Number(form.price_per_trip)
+  const price = Number(form.unit_price)
   const trips = billableTripCount(Number(form.truck_count), Number(form.trip_count))
-  const total = trips != null && Number.isFinite(price) && price > 0 ? quotationTotal(price, trips) : null
+  const weight = shipmentWeightTons(shipment.weight_tons)
+  const total =
+    form.unit_price.trim() !== '' && Number.isFinite(price) && price > 0
+      ? form.pricing_basis === 'ton'
+        ? weight != null
+          ? tonQuotationTotal(price, weight)
+          : null
+        : trips != null
+          ? quotationTotal(price, trips)
+          : null
+      : null
   const ready =
     providerId !== '' &&
     !blocked &&
-    form.price_per_trip.trim() !== '' &&
-    Number.isFinite(price) &&
-    price > 0 &&
-    trips != null &&
+    total != null &&
     Number(form.truck_count) >= 1 &&
     form.truck_type !== '' &&
     Number(form.truck_capacity_tons) > 0 &&
@@ -206,7 +221,7 @@ export function OnBehalfQuotationPanel({ shipment }: OnBehalfQuotationPanelProps
       const additional = form.additional_costs.trim()
       return submitQuotationOnBehalf(shipment.id, {
         provider_organization_id: Number(providerId),
-        price_per_trip: price,
+        ...(form.pricing_basis === 'ton' ? { price_per_ton: price } : { price_per_trip: price }),
         truck_count: Number(form.truck_count),
         truck_type: form.truck_type,
         truck_capacity_tons: Number(form.truck_capacity_tons),
@@ -321,17 +336,17 @@ export function OnBehalfQuotationPanel({ shipment }: OnBehalfQuotationPanelProps
               onChange={(event) => update('transport_start_date', event.target.value)}
             />
           </FormField>
-          <FormField label={t('quotations.pricePerTrip')} htmlFor="on-behalf-price" required hint={t('quotations.pricePerTripHint')}>
-            <input
-              id="on-behalf-price"
-              className="mz-input"
-              inputMode="decimal"
-              value={form.price_per_trip}
-              disabled={blocked}
-              onChange={(event) => update('price_per_trip', event.target.value)}
-              required
-            />
-          </FormField>
+          <QuotePriceFields
+            idPrefix="on-behalf"
+            basis={form.pricing_basis}
+            price={form.unit_price}
+            truckCount={form.truck_count}
+            tripCount={form.trip_count}
+            weightTons={shipment.weight_tons}
+            disabled={blocked}
+            onBasisChange={(basis) => setForm((current) => ({ ...current, pricing_basis: basis }))}
+            onPriceChange={(value) => update('unit_price', value)}
+          />
           <FormField label={t('quotations.additionalCosts')} htmlFor="on-behalf-extra">
             <input
               id="on-behalf-extra"
@@ -342,6 +357,7 @@ export function OnBehalfQuotationPanel({ shipment }: OnBehalfQuotationPanelProps
               onChange={(event) => update('additional_costs', event.target.value)}
             />
           </FormField>
+          <QuotePayableHint transport={total} additionalCosts={form.additional_costs} />
           <FormField label={t('quotations.conditions')} htmlFor="on-behalf-conditions">
             <textarea
               id="on-behalf-conditions"
@@ -352,9 +368,6 @@ export function OnBehalfQuotationPanel({ shipment }: OnBehalfQuotationPanelProps
               onChange={(event) => update('conditions', event.target.value)}
             />
           </FormField>
-        {total != null && trips != null ? (
-          <p className="mz-offer__hint">{t('quotations.calculatedTotal', { amount: formatMoney(total), count: trips })}</p>
-        ) : null}
         <div className="mz-form-actions">
           <button type="submit" className="mz-btn mz-btn--primary" disabled={!ready || submit.isPending || withdraw.isPending}>
             {t('shipments.submitOnBehalf')}

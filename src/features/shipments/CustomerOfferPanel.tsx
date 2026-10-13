@@ -5,8 +5,15 @@ import { useTranslation } from 'react-i18next'
 import { fetchFleetForPlan, fetchTruckTypes, type PlatformOfferInput } from '@/core/api/services.ts'
 import type { PlatformOffer, Quotation, Shipment } from '@/core/api/types.ts'
 import { QuoteExecutionFields, requestedTruckType } from '@/features/quotations/QuoteExecutionFields.tsx'
+import { QuotePayableHint, QuotePriceFields } from '@/features/quotations/QuotePriceFields.tsx'
 import { earliestTransportStart } from '@/features/quotations/transportStart.ts'
-import { billableTripCount, quotationTotal } from '@/features/quotations/quotationPrice.ts'
+import {
+  billableTripCount,
+  quotationTotal,
+  shipmentWeightTons,
+  tonQuotationTotal,
+  type PricingBasis,
+} from '@/features/quotations/quotationPrice.ts'
 import { OnBehalfQuotationPanel } from '@/features/shipments/OnBehalfQuotationPanel.tsx'
 import { FormField } from '@/shared/components/FormField.tsx'
 import { SectionTitle } from '@/shared/components/SectionTitle.tsx'
@@ -81,7 +88,8 @@ export function CustomerOfferPanel({
   const [amountInput, setAmountInput] = useState('')
   const [source, setSource] = useState<'provider' | 'platform' | 'onBehalf'>('provider')
   const [ownedForm, setOwnedForm] = useState({
-    price_per_trip: '',
+    pricing_basis: 'trip' as PricingBasis,
+    unit_price: '',
     truck_count: '1',
     truck_type: '',
     truck_capacity_tons: '',
@@ -104,7 +112,8 @@ export function CustomerOfferPanel({
   if (seenShipmentId !== shipment.id) {
     setSeenShipmentId(shipment.id)
     setOwnedForm({
-      price_per_trip: '',
+      pricing_basis: 'trip',
+      unit_price: '',
       truck_count: '1',
       truck_type: '',
       truck_capacity_tons: '',
@@ -158,14 +167,21 @@ export function CustomerOfferPanel({
   const canCompose = canManage && shipment.status === 'published'
   const offerIsLive = shipment.platform_offer != null
   const showComposer = !offerIsLive || replacing
-  const ownedPrice = Number(ownedForm.price_per_trip)
+  const ownedPrice = Number(ownedForm.unit_price)
   const ownedTrips = billableTripCount(Number(ownedForm.truck_count), Number(ownedForm.trip_count))
-  const ownedTotal = ownedTrips != null && Number.isFinite(ownedPrice) && ownedPrice > 0 ? quotationTotal(ownedPrice, ownedTrips) : null
+  const ownedWeight = shipmentWeightTons(shipment.weight_tons)
+  const ownedTotal =
+    ownedForm.unit_price.trim() !== '' && Number.isFinite(ownedPrice) && ownedPrice > 0
+      ? ownedForm.pricing_basis === 'ton'
+        ? ownedWeight != null
+          ? tonQuotationTotal(ownedPrice, ownedWeight)
+          : null
+        : ownedTrips != null
+          ? quotationTotal(ownedPrice, ownedTrips)
+          : null
+      : null
   const ownedReady =
-    ownedForm.price_per_trip.trim() !== '' &&
-    Number.isFinite(ownedPrice) &&
-    ownedPrice > 0 &&
-    ownedTrips != null &&
+    ownedTotal != null &&
     Number(ownedForm.truck_count) >= 1 &&
     ownedForm.truck_type !== '' &&
     Number(ownedForm.truck_capacity_tons) > 0 &&
@@ -302,7 +318,7 @@ export function CustomerOfferPanel({
               const confirm = (event.nativeEvent as SubmitEvent).submitter?.getAttribute('value') === 'confirm'
               const additional = ownedForm.additional_costs.trim()
               onPublish({
-                price_per_trip: ownedPrice,
+                ...(ownedForm.pricing_basis === 'ton' ? { price_per_ton: ownedPrice } : { price_per_trip: ownedPrice }),
                 truck_count: Number(ownedForm.truck_count),
                 truck_type: ownedForm.truck_type,
                 truck_capacity_tons: Number(ownedForm.truck_capacity_tons),
@@ -344,16 +360,16 @@ export function CustomerOfferPanel({
                 onChange={(event) => setOwnedForm((current) => ({ ...current, transport_start_date: event.target.value }))}
               />
             </FormField>
-            <FormField label={t('quotations.pricePerTrip')} htmlFor="owned-price" required hint={t('quotations.pricePerTripHint')}>
-              <input
-                id="owned-price"
-                className="mz-input"
-                inputMode="decimal"
-                value={ownedForm.price_per_trip}
-                onChange={(event) => setOwnedForm((current) => ({ ...current, price_per_trip: event.target.value }))}
-                required
-              />
-            </FormField>
+            <QuotePriceFields
+              idPrefix="owned"
+              basis={ownedForm.pricing_basis}
+              price={ownedForm.unit_price}
+              truckCount={ownedForm.truck_count}
+              tripCount={ownedForm.trip_count}
+              weightTons={shipment.weight_tons}
+              onBasisChange={(basis) => setOwnedForm((current) => ({ ...current, pricing_basis: basis }))}
+              onPriceChange={(value) => setOwnedForm((current) => ({ ...current, unit_price: value }))}
+            />
             <FormField label={t('quotations.additionalCosts')} htmlFor="owned-extra">
               <input
                 id="owned-extra"
@@ -363,6 +379,7 @@ export function CustomerOfferPanel({
                 onChange={(event) => setOwnedForm((current) => ({ ...current, additional_costs: event.target.value }))}
               />
             </FormField>
+            <QuotePayableHint transport={ownedTotal} additionalCosts={ownedForm.additional_costs} />
             <FormField label={t('quotations.conditions')} htmlFor="owned-conditions">
               <textarea
                 id="owned-conditions"
@@ -372,9 +389,6 @@ export function CustomerOfferPanel({
                 onChange={(event) => setOwnedForm((current) => ({ ...current, conditions: event.target.value }))}
               />
             </FormField>
-            {ownedTotal != null && ownedTrips != null ? (
-              <p className="mz-offer__hint">{t('quotations.calculatedTotal', { amount: formatMoney(ownedTotal), count: ownedTrips })}</p>
-            ) : null}
             <p className="mz-offer__hint">{t('shipments.offerActionHint')}</p>
             <div className="mz-form-actions">
               <button type="submit" value="publish" className="mz-btn mz-btn--ghost" disabled={publishing || confirming || !ownedReady}>
@@ -533,6 +547,7 @@ export function CustomerOfferPanel({
 
 interface OfferDetail {
   price_per_trip?: string | number | null
+  price_per_ton?: string | number | null
   truck_count?: number | null
   truck_type?: string | null
   truck_type_label?: string | null
@@ -553,7 +568,9 @@ function OfferFacts({ detail, unitLabel, note }: { detail: OfferDetail; unitLabe
     if (value == null || value === '') return
     rows.push({ label, value: String(value) })
   }
-  if (moneyAmount(detail.price_per_trip)) {
+  if (moneyAmount(detail.price_per_ton)) {
+    push(t('quotations.pricePerTon'), formatMoney(detail.price_per_ton, detail.currency ?? undefined))
+  } else if (moneyAmount(detail.price_per_trip)) {
     push(t('quotations.pricePerTrip'), formatMoney(detail.price_per_trip, detail.currency ?? undefined))
   }
   push(t('quotations.truckCount'), detail.truck_count == null ? null : formatDetail(detail.truck_count))
@@ -666,6 +683,8 @@ function PublishedOffer({
       </div>
       <OfferFacts
         detail={{
+          price_per_trip: quotation?.price_per_trip,
+          price_per_ton: quotation?.price_per_ton,
           truck_count: offer.truck_count,
           truck_type: offer.truck_type,
           truck_type_label: offer.truck_type_label,

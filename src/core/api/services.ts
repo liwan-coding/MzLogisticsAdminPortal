@@ -222,8 +222,11 @@ export type ProviderPlatformOfferInput = {
   customer_price: number
 }
 
-export type OwnedPlatformOfferInput = {
-  price_per_trip: number
+export type QuotedPriceInput =
+  | { price_per_trip: number; price_per_ton?: never }
+  | { price_per_ton: number; price_per_trip?: never }
+
+export type OwnedPlatformOfferInput = QuotedPriceInput & {
   truck_count: number
   truck_type: string
   truck_capacity_tons: number
@@ -251,9 +254,8 @@ export async function withdrawPlatformOffer(offerId: string | number): Promise<v
   await api.post(`/platform-offers/${offerId}/withdraw`)
 }
 
-export type OnBehalfQuotationInput = {
+export type OnBehalfQuotationInput = QuotedPriceInput & {
   provider_organization_id: number
-  price_per_trip: number
   truck_count: number
   truck_type: string
   truck_capacity_tons: number
