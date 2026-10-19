@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/core/auth/AuthContext.tsx'
+import { fetchUnreadNotificationCount } from '@/core/api/services.ts'
 import { LanguageSwitcher } from '@/shared/components/LanguageSwitcher.tsx'
 import { AppIcon } from '@/shared/icons/NavIcons.tsx'
 import { formatDate, initials } from '@/shared/utils/format.ts'
@@ -13,6 +15,11 @@ interface TopBarProps {
 export function TopBar({ onMenu }: TopBarProps) {
   const { t } = useTranslation()
   const { user, logout } = useAuth()
+  const unread = useQuery({
+    queryKey: ['notifications', 'unread-count'],
+    queryFn: fetchUnreadNotificationCount,
+    refetchInterval: 60_000,
+  })
   const role = user?.roles?.[0]
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -42,6 +49,10 @@ export function TopBar({ onMenu }: TopBarProps) {
         </div>
       </div>
       <div className="mz-topbar__end">
+        <Link to="/notifications" className="mz-notify-btn" aria-label={t('notifications.title')}>
+          <AppIcon name="notifications" width={16} height={16} />
+          {(unread.data ?? 0) > 0 ? <span className="mz-notify-btn__count">{(unread.data ?? 0) > 99 ? '99+' : unread.data}</span> : null}
+        </Link>
         <LanguageSwitcher />
         <div className="mz-user-menu" ref={menuRef}>
           <button

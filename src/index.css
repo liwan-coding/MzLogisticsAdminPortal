@@ -344,6 +344,49 @@ html[dir='rtl'] .mz-nav-link.is-active {
   cursor: pointer;
 }
 
+.mz-notify-btn {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--mz-border);
+  background: var(--mz-card);
+  border-radius: 8px;
+  color: var(--mz-ink);
+  display: grid;
+  place-items: center;
+}
+
+.mz-notify-btn__count {
+  position: absolute;
+  top: -6px;
+  inset-inline-end: -6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--mz-danger);
+  color: #fff;
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+}
+
+.mz-notify-title {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.mz-notify-title.is-unread {
+  font-weight: 600;
+}
+
 .mz-user-menu {
   position: relative;
 }

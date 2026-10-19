@@ -38,6 +38,7 @@ export type IconName =
   | 'email'
   | 'notes'
   | 'clock'
+  | 'notifications'
   | 'quantity'
   | 'city'
   | 'pickup'
@@ -356,6 +357,13 @@ const glyphs: Record<IconName, ReactNode> = {
       <circle cx="12" cy="12" r="7.6" fill="currentColor" opacity="0.14" />
       <circle cx="12" cy="12" r="7.6" />
       <path d="M12 8.2V12l2.8 2" />
+    </>
+  ),
+  notifications: (
+    <>
+      <path d="M6.2 16.2h11.6l-1.3-2V10.4a4.5 4.5 0 0 0-9 0v3.8l-1.3 2Z" fill="currentColor" opacity="0.16" />
+      <path d="M6.2 16.2h11.6l-1.3-2V10.4a4.5 4.5 0 0 0-9 0v3.8l-1.3 2Z" />
+      <path d="M10 16.4a2 2 0 0 0 4 0" />
     </>
   ),
   quantity: (

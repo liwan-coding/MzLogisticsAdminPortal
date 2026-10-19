@@ -36,6 +36,7 @@ export const iconTones: Partial<Record<IconName, IconTone>> = {
   email: 'purple',
   notes: 'muted',
   clock: 'warning',
+  notifications: 'info',
   quantity: 'info',
   city: 'purple',
   pickup: 'success',
@@ -64,6 +65,7 @@ const routeVisuals: { prefix: string; icon: IconName }[] = [
   { prefix: '/users', icon: 'users' },
   { prefix: '/roles', icon: 'roles' },
   { prefix: '/settings', icon: 'settings' },
+  { prefix: '/notifications', icon: 'notifications' },
 ]
 
 export function toneForIcon(icon: IconName): IconTone {

@@ -6,6 +6,7 @@ import type {
   Catalog,
   AccessCatalog,
   AccessRole,
+  AppNotification,
   CreateCustomerInput,
   CreateProviderInput,
   CreateSettlementInput,
@@ -814,4 +815,24 @@ export async function deleteRole(role: string): Promise<void> {
 export async function cancelShipment(id: string | number): Promise<Shipment> {
   const { data } = await api.post<ApiSuccess<Shipment>>(`/shipments/${id}/cancel`)
   return unwrapData(data)
+}
+
+export async function fetchNotifications(query: { page?: number; status?: string; per_page?: number } = {}) {
+  const { data } = await api.get<ApiSuccess<AppNotification[] | { data: AppNotification[]; current_page: number; last_page: number; per_page: number; total: number }>>('/notifications', {
+    params: query,
+  })
+  return unwrapList(data)
+}
+
+export async function fetchUnreadNotificationCount(): Promise<number> {
+  const page = await fetchNotifications({ status: 'unread', page: 1, per_page: 1 })
+  return page.meta.total
+}
+
+export async function markNotificationRead(id: string): Promise<void> {
+  await api.post(`/notifications/${id}/read`)
+}
+
+export async function markAllNotificationsRead(): Promise<void> {
+  await api.post('/notifications/read-all')
 }

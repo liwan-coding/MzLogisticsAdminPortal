@@ -70,6 +70,9 @@ const FinanceStatementPage = lazy(() =>
 )
 const ReportsPage = lazy(() => import('@/features/reports/ReportsPage.tsx').then((m) => ({ default: m.ReportsPage })))
 const ProfilePage = lazy(() => import('@/features/users/ProfilePage.tsx').then((m) => ({ default: m.ProfilePage })))
+const NotificationsPage = lazy(() =>
+  import('@/features/notifications/NotificationsPage.tsx').then((m) => ({ default: m.NotificationsPage })),
+)
 const UsersPage = lazy(() => import('@/features/users/UsersPage.tsx').then((m) => ({ default: m.UsersPage })))
 const UserFormPage = lazy(() => import('@/features/users/UserFormPage.tsx').then((m) => ({ default: m.UserFormPage })))
 const RolesPage = lazy(() => import('@/features/users/RolesPage.tsx').then((m) => ({ default: m.RolesPage })))
@@ -222,6 +225,7 @@ const router = createBrowserRouter([
             children: [{ path: '/roles', element: withSuspense(<RolesPage />) }],
           },
           { path: '/settings', element: withSuspense(<ProfilePage />) },
+          { path: '/notifications', element: withSuspense(<NotificationsPage />) },
         ],
       },
     ],

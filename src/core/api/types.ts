@@ -704,3 +704,20 @@ export interface VerifyOrganizationInput {
 export interface UpdateCommissionRateInput {
   commission_rate: number | null
 }
+
+export interface AppNotification {
+  id: string
+  read_at?: string | null
+  created_at?: string | null
+  data?: {
+    event?: string
+    title?: string
+    body?: string
+    title_ar?: string
+    title_en?: string
+    body_ar?: string
+    body_en?: string
+    target_type?: string
+    target_id?: number | string | null
+  }
+}

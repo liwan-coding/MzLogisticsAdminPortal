@@ -31,7 +31,8 @@
     "finance": "Finance",
     "admin": "Administration",
     "users": "Users",
-    "roles": "Roles & permissions"
+    "roles": "Roles & permissions",
+    "notifications": "Notifications"
   },
   "common": {
     "search": "Search",
@@ -1122,5 +1123,16 @@
     "Finance": "Finance",
     "Viewer": "Viewer",
     "Driver": "Driver"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "subtitle": "Operational and finance alerts that need attention",
+    "titleColumn": "Title",
+    "bodyColumn": "Details",
+    "when": "Time",
+    "all": "All",
+    "unread": "Unread",
+    "read": "Read",
+    "markAll": "Mark all as read"
   }
 }
