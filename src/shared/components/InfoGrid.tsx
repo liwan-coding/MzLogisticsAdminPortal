@@ -1,6 +1,7 @@
 import { displayValue } from '@/shared/utils/format.ts'
 import type { ReactNode } from 'react'
 import { AppIcon, type IconName } from '@/shared/icons/NavIcons.tsx'
+import { toneForIcon } from '@/shared/icons/pageVisuals.ts'
 
 export interface InfoField {
   label: string
@@ -34,7 +35,11 @@ export function InfoGrid({ fields, variant = 'default' }: { fields: InfoField[];
               .join(' ')}
           >
             <dt className="mz-info-field__label">
-              {field.icon ? <AppIcon name={field.icon} /> : null}
+              {field.icon ? (
+                <span className={`mz-info-ico mz-info-ico--${toneForIcon(field.icon)}`}>
+                  <AppIcon name={field.icon} />
+                </span>
+              ) : null}
               {field.label}
             </dt>
             <dd className="mz-info-field__value" dir={field.dir}>

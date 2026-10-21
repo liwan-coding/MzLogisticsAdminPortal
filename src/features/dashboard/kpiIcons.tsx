@@ -9,4 +9,7 @@ export const kpiIcons = {
   commission: <AppIcon name="commission" />,
   settlement: <AppIcon name="settlements" />,
   invoice: <AppIcon name="invoices" />,
+  customer: <AppIcon name="customers" />,
+  provider: <AppIcon name="providers" />,
+  report: <AppIcon name="reports" />,
 }

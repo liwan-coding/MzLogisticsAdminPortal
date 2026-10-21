@@ -539,6 +539,7 @@ export function ReportsPage() {
         <div className="mz-kpi-grid">
           {canViewShipments ? (
             <KpiCard
+              icon={kpiIcons.report}
               label={t('reports.openShare')}
               value={formatPercent(openShare)}
               hint={t('reports.openShareHint')}
@@ -548,6 +549,7 @@ export function ReportsPage() {
           ) : null}
           {canViewJobs ? (
             <KpiCard
+              icon={kpiIcons.job}
               label={t('reports.completionShare')}
               value={formatPercent(completionShare)}
               hint={t('reports.completionShareHint')}
@@ -557,6 +559,7 @@ export function ReportsPage() {
           ) : null}
           {canViewWallets ? (
             <KpiCard
+              icon={kpiIcons.settlement}
               label={t('reports.availableShare')}
               value={formatPercent(availableShare)}
               hint={t('reports.availableShareHint')}
@@ -575,7 +578,7 @@ export function ReportsPage() {
           <div className="mz-kpi-grid">
             {canViewProviders ? (
               <KpiCard
-                icon={kpiIcons.settlement}
+                icon={kpiIcons.provider}
                 label={t('dashboard.providersPending')}
                 value={formatNumber(stats.providers_pending)}
                 hint={t('dashboard.shortcutProvidersHint')}
@@ -585,6 +588,7 @@ export function ReportsPage() {
             ) : null}
             {canViewCustomers ? (
               <KpiCard
+                icon={kpiIcons.customer}
                 label={t('dashboard.customersPending')}
                 value={formatNumber(stats.customers_pending)}
                 hint={t('dashboard.customersPending')}
