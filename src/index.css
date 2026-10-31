@@ -2845,6 +2845,7 @@ html[dir='rtl'] .mz-timeline__step::after {
   border-radius: var(--mz-radius);
   background: var(--mz-surface);
   overflow: hidden;
+  transition: transform 0.22s var(--mz-ease), border-color 0.22s var(--mz-ease), box-shadow 0.22s var(--mz-ease);
 }
 
 .mz-attention__item::before {
@@ -2862,8 +2863,6 @@ html[dir='rtl'] .mz-timeline__step::after {
 
 .mz-attention__item--danger::before {
   background: var(--mz-danger);
-}
-  transition: transform 0.22s var(--mz-ease), border-color 0.22s var(--mz-ease), box-shadow 0.22s var(--mz-ease);
 }
 
 .mz-attention__item:hover {

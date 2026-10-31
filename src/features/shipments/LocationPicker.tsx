@@ -272,13 +272,12 @@ export function LocationPicker({
         <p className="mz-location__meta">{t('location.dropPinHint')}</p>
       )}
       {open ? (
-        <div className="mz-dialog-backdrop mz-dialog-backdrop--in" role="presentation" onClick={() => setOpen(false)}>
+        <div className="mz-dialog-backdrop mz-dialog-backdrop--in" role="presentation">
           <div
             className="mz-dialog mz-dialog--map"
             role="dialog"
             aria-modal="true"
             aria-labelledby={titleId}
-            onClick={(event) => event.stopPropagation()}
           >
             <div className="mz-dialog__head">
               <h2 id={titleId}>{label}</h2>

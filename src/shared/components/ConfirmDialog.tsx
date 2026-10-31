@@ -34,13 +34,12 @@ export function ConfirmDialog({
   }
 
   return (
-    <div className="mz-dialog-backdrop mz-dialog-backdrop--in" role="presentation" onClick={onClose}>
+    <div className="mz-dialog-backdrop mz-dialog-backdrop--in" role="presentation">
       <div
         className={`mz-dialog${wide ? ' mz-dialog--wide' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="mz-dialog-title"
-        onClick={(event) => event.stopPropagation()}
       >
         <div className="mz-dialog__head">
           <h2 id="mz-dialog-title">{title}</h2>
