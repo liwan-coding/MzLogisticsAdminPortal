@@ -1,18 +1,23 @@
-import { useQuery } from '@tanstack/react-query'
+import { useState, type FormEvent } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { fetchOrganization } from '@/core/api/services.ts'
+import { fetchOrganization, verifyOrganization } from '@/core/api/services.ts'
+import { api, getApiMessage } from '@/core/api/client.ts'
 import { useAuth } from '@/core/auth/AuthContext.tsx'
 import { PERMISSIONS } from '@/core/constants/permissions.ts'
+import { ORGANIZATION_VERIFY_STATUSES } from '@/core/constants/statuses.ts'
 import { PageHeader } from '@/shared/components/PageHeader.tsx'
 import { LoadingState } from '@/shared/components/LoadingState.tsx'
 import { ErrorState } from '@/shared/components/ErrorState.tsx'
 import { StatusBadge } from '@/shared/components/StatusBadge.tsx'
 import { InfoGrid } from '@/shared/components/InfoGrid.tsx'
+import { FormField } from '@/shared/components/FormField.tsx'
 import { SectionTitle } from '@/shared/components/SectionTitle.tsx'
 import { IconWell } from '@/shared/components/IconWell.tsx'
 import { AppIcon } from '@/shared/icons/NavIcons.tsx'
 import { displayValue, enumString, formatDate, formatPaymentTerms, isCustomerOrganization, organizationName } from '@/shared/utils/format.ts'
+import type { OrganizationDocument } from '@/core/api/types.ts'
 
 function ContactValue({ value, href }: { value?: string | null; href: string }) {
   if (!value) {
@@ -135,17 +140,26 @@ export function CustomerDetailPage() {
           </div>
         </section>
         <div className="mz-stack">
-          <section className="mz-card">
-            <div className="mz-card__body">
-              <SectionTitle icon="providers" title={t('customers.companySection')} />
-              <InfoGrid
-                fields={[
-                  { icon: 'invoices', label: t('customers.commercialRegister'), value: org.commercial_register, dir: 'ltr' },
-                  { icon: 'quotations', label: t('customers.taxNumber'), value: org.tax_number, dir: 'ltr' },
-                ]}
-              />
-            </div>
-          </section>
+          {org.account_type === 'individual' ? (
+            <section className="mz-card">
+              <div className="mz-card__body">
+                <SectionTitle icon="profile" title={t('customers.identitySection')} />
+                <IdentityCardDocuments documents={org.identity_documents} />
+              </div>
+            </section>
+          ) : (
+            <section className="mz-card">
+              <div className="mz-card__body">
+                <SectionTitle icon="providers" title={t('customers.companySection')} />
+                <InfoGrid
+                  fields={[
+                    { icon: 'invoices', label: t('customers.commercialRegister'), value: org.commercial_register, dir: 'ltr' },
+                    { icon: 'quotations', label: t('customers.taxNumber'), value: org.tax_number, dir: 'ltr' },
+                  ]}
+                />
+              </div>
+            </section>
+          )}
           <section className="mz-card">
             <div className="mz-card__body">
               <SectionTitle icon="roles" title={t('customers.accountSection')} />
@@ -153,12 +167,14 @@ export function CustomerDetailPage() {
                 fields={[
                   { icon: 'profile', label: t('common.name'), value: org.name, dir: org.name && /[A-Za-z]/.test(org.name) ? 'ltr' : undefined },
                   { icon: 'profile', label: t('customers.nameAr'), value: org.name_ar },
+                  { icon: 'roles', label: t('customers.accountType'), value: org.account_type ? t(`status.${org.account_type}`) : null },
                   { icon: 'roles', label: t('common.status'), value: <StatusBadge status={org.status} /> },
                   { icon: 'calendar', label: t('common.createdAt'), value: formatDate(org.created_at) },
                 ]}
               />
             </div>
           </section>
+          {hasPermission(PERMISSIONS.CUSTOMERS_MANAGE) ? <CustomerReviewForm id={org.id} /> : null}
           <section className="mz-card">
             <div className="mz-card__body">
               <SectionTitle icon="invoices" title={t('paymentContract.title')} />
@@ -180,5 +196,96 @@ export function CustomerDetailPage() {
         </div>
       </div>
     </>
+  )
+}
+
+function IdentityCardDocuments({ documents }: { documents?: OrganizationDocument[] }) {
+  const { t } = useTranslation()
+  const [error, setError] = useState('')
+  const cards = (documents ?? []).filter((document) => document.type === 'identity')
+
+  async function openDocument(id: number) {
+    setError('')
+    try {
+      const response = await api.get<Blob>(`/documents/${id}/file`, { responseType: 'blob' })
+      const url = URL.createObjectURL(response.data)
+      window.open(url, '_blank', 'noopener')
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    } catch (err) {
+      setError(getApiMessage(err, t('customers.noIdentity')))
+    }
+  }
+
+  if (cards.length === 0) {
+    return <p className="mz-notes">{t('customers.noIdentity')}</p>
+  }
+
+  return (
+    <div className="mz-stack">
+      {error ? <div className="mz-alert">{error}</div> : null}
+      {cards.map((document) => (
+        <button key={document.id} type="button" className="mz-btn mz-btn--ghost" onClick={() => void openDocument(document.id)}>
+          {t('customers.viewIdentity')}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function CustomerReviewForm({ id }: { id: number }) {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const [status, setStatus] = useState('active')
+  const [notes, setNotes] = useState('')
+  const [feedback, setFeedback] = useState('')
+  const [error, setError] = useState('')
+
+  const mutation = useMutation({
+    mutationFn: () => verifyOrganization(id, { status, verification_notes: notes }),
+    onSuccess: async () => {
+      setFeedback(t('providers.verifySuccess'))
+      setError('')
+      await queryClient.invalidateQueries({ queryKey: ['organization', id] })
+      await queryClient.invalidateQueries({ queryKey: ['customers'] })
+    },
+    onError: (err) => {
+      setFeedback('')
+      setError(getApiMessage(err, t('providers.verifyFailed')))
+    },
+  })
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    mutation.mutate()
+  }
+
+  return (
+    <section className="mz-card">
+      <div className="mz-card__body">
+        <SectionTitle icon="verify" title={t('providers.verifyTitle')} />
+        <p className="mz-notes" style={{ color: 'var(--mz-muted)', marginBottom: 12 }}>
+          {t('providers.verifyHint')}
+        </p>
+        <form className="mz-form" onSubmit={onSubmit}>
+          {feedback ? <div className="mz-alert mz-alert--ok">{feedback}</div> : null}
+          {error ? <div className="mz-alert">{error}</div> : null}
+          <FormField label={t('providers.newStatus')} htmlFor="customer-verify-status" required>
+            <select id="customer-verify-status" className="mz-select" value={status} onChange={(event) => setStatus(event.target.value)}>
+              {ORGANIZATION_VERIFY_STATUSES.map((value) => (
+                <option key={value} value={value}>
+                  {t(`status.${value}`)}
+                </option>
+              ))}
+            </select>
+          </FormField>
+          <FormField label={t('providers.verificationNotes')} htmlFor="customer-verify-notes">
+            <textarea id="customer-verify-notes" className="mz-textarea" value={notes} onChange={(event) => setNotes(event.target.value)} />
+          </FormField>
+          <button type="submit" className="mz-btn mz-btn--primary" disabled={mutation.isPending}>
+            {mutation.isPending ? t('providers.verifying') : t('providers.submitVerify')}
+          </button>
+        </form>
+      </div>
+    </section>
   )
 }

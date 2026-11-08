@@ -23,6 +23,14 @@ export interface Paginated<T> {
   meta: ApiMeta
 }
 
+export interface OrganizationDocument {
+  id: number
+  type: string
+  title: string
+  status: string
+  expires_at?: string | null
+}
+
 export interface Organization {
   id: number
   type: string
@@ -42,6 +50,7 @@ export interface Organization {
   effective_commission_rate?: string | number | null
   uses_default_commission?: boolean
   payment_contract?: PaymentContract | null
+  identity_documents?: OrganizationDocument[]
   created_at?: string
   trucks_count?: number
   driver_profiles_count?: number

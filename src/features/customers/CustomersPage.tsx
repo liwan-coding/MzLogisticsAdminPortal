@@ -52,6 +52,11 @@ export function CustomersPage() {
         </Link>
       ),
     },
+    {
+      id: 'accountType',
+      header: t('customers.accountType'),
+      cell: (row) => <StatusBadge status={row.account_type} />,
+    },
     { id: 'email', header: t('common.email'), cell: (row) => displayValue(row.email) },
     { id: 'city', header: t('common.city'), cell: (row) => displayValue(row.city) },
     { id: 'status', header: t('common.status'), cell: (row) => <StatusBadge status={row.status} /> },
@@ -100,6 +105,7 @@ export function CustomersPage() {
                 filters: listReportFilters(t, list),
                 columns: [
                   t('common.name'),
+                  t('customers.accountType'),
                   t('common.email'),
                   t('common.city'),
                   t('common.status'),
@@ -107,6 +113,7 @@ export function CustomersPage() {
                 ],
                 rows: rows.map((row) => [
                   organizationName(row),
+                  reportStatus(t, row.account_type),
                   displayValue(row.email),
                   displayValue(row.city),
                   reportStatus(t, row.status),
